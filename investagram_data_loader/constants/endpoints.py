@@ -1,3 +1,5 @@
 AUTHENTICATION_ENDPOINT = '/InvestaApi/User/AuthenticateUser'
-STOCK_TRANSACTION = '/InvestaApi/Stock/GetStockTransactionByStockIdAndDate'
+STOCK_TRANSACTION_BY_STOCK_ID = '/InvestaApi/Stock/GetStockTransactionByStockIdAndDate'
 STOCK_ID = '/InvestaApi/Stock/SearchStockSnippet'
+BROKER_ID = '/InvestaApi/Stock/SearchBrokerSnippet'
+STOCK_TRANSACTION_BY_BROKER_ID = '/InvestaApi/Stock/GetStockTransactionByBrokerIdAndDate'
