@@ -1,8 +1,10 @@
 import keyring
 import requests
+from datetime import date
 from investagram_data_loader.constants.app import *
 from investagram_data_loader.constants.user import *
 from investagram_data_loader.constants.endpoints import *
+from investagram_data_loader.models.stock import Stock
 
 
 def _load_password():
@@ -44,11 +46,24 @@ class InvestagramApi:
 
         return cls._instance
 
-    def get_stock_transaction_by_stock_id_and_date(self, stock_id: int, from_date: str, to_date: str):
+    def get_stock_info(self, stock_name: str) -> Stock:
+        params = {
+            'limit': 0,
+            'keyword': stock_name.lower(),
+            'userDefaultExchangeType': 1,
+            'selectedExchangeType': 1,
+        }
+
+        response = self._http_client.get(f'{BASE_HOST}{STOCK_ID}', params=params)
+        return Stock.from_dict(response.json()[0])
+
+    def get_stock_transaction_by_stock_id_and_date(self, stock_id: int, from_date: date, to_date: date):
+        date_format = '%Y/%m/%d'
+
         params = {
             'stockId': stock_id,
-            'fromDate': from_date,
-            'toDate': to_date
+            'fromDate': from_date.strftime(date_format),
+            'toDate': to_date.strftime(date_format)
         }
 
         response = self._http_client.post(f'{BASE_HOST}{STOCK_TRANSACTION}', params=params)
