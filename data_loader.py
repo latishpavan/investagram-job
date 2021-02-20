@@ -1,19 +1,9 @@
-import requests
+from investagram_data_loader.api.ig_api import InvestagramApi
 
 
 def main():
-    url = 'https://webapi.investagrams.com/InvestaApi/Stock/GetStockTransactionByStockIdAndDate' \
-          '?stockId=146&fromDate=2021/02/19&toDate=2021/02/19'
-
-    with open('./cookie.txt') as fd:
-        headers = {
-            'Origin': 'https://www.investagrams.com',
-            'Referer': 'https://www.investagrams.com/',
-            'Cookie': fd.read()
-        }
-
-    response = requests.post(url, data={}, headers=headers)
-    print(response.json())
+    data = InvestagramApi().get_stock_transaction_by_stock_id_and_date(146, '2021/02/19', '2021/02/19')
+    print(data)
 
 
 if __name__ == '__main__':
