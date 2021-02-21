@@ -1,3 +1,2 @@
 REQUEST_COMING_FROM_TYPE = 3
-USER_NAME = 'aljarreau.sy@outlook.com'
 DEVICE_ID = '1613734544-b35d33f0-66c2-4669-3c47-05f38adc2a5d-0000'

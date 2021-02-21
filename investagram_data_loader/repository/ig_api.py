@@ -1,16 +1,27 @@
 import keyring
 import requests
 from typing import List
-from datetime import date
+from dynaconf import settings
+from functools import lru_cache
+from stringcase import snakecase
+from datetime import datetime, date
 from investagram_data_loader.constants.app import *
 from investagram_data_loader.constants.user import *
 from investagram_data_loader.constants.endpoints import *
-from investagram_data_loader.models.stock import Stock
-from investagram_data_loader.models.result import StockBrokerResult
+from investagram_data_loader.repository.sqlite_dao import Stock, Broker, Transaction, upsert_stock, upsert_broker
+
+
+def process_response(response: dict) -> dict:
+    processed_response = {}
+
+    for key, value in response.items():
+        processed_response[snakecase(key)] = value
+
+    return processed_response
 
 
 def _load_password():
-    return keyring.get_password(BASE_HOST, USER_NAME)
+    return keyring.get_password(BASE_HOST, settings.USER_NAME)
 
 
 def construct_login_body():
@@ -23,7 +34,7 @@ def construct_login_body():
         'IsRememberMe': True,
         'Password': _load_password(),
         'RequestComingFromType': 3,
-        'Username': USER_NAME
+        'Username': settings.USER_NAME
     }
 
 
@@ -48,6 +59,23 @@ class InvestagramApi:
 
         return cls._instance
 
+    @lru_cache(maxsize=200)
+    @upsert_broker
+    def get_broker_info(self, broker_name: str) -> Broker:
+        data = {
+            "ExchangeType": 1,
+            "IsAnalytics": False,
+            "IsByBroker": True,
+            "IsGetData": True,
+            "Keyword": broker_name.lower()
+        }
+
+        response = self._http_client.post(f'{BASE_HOST}{BROKER_ID}', data=data)
+        broker_info = process_response(response.json()[0])
+        return Broker.create(**broker_info)
+
+    @lru_cache(maxsize=300)
+    @upsert_stock
     def get_stock_info(self, stock_name: str) -> Stock:
         params = {
             'limit': 0,
@@ -57,9 +85,10 @@ class InvestagramApi:
         }
 
         response = self._http_client.get(f'{BASE_HOST}{STOCK_ID}', params=params)
-        return Stock.from_dict(response.json()[0])
+        stock_info = process_response(response.json()[0])
+        return Stock.create(**stock_info)
 
-    def _get_transactions(self, url: str, params: dict, from_date: date, to_date: date) -> List[StockBrokerResult]:
+    def _get_transactions(self, url: str, params: dict, from_date: date, to_date: date) -> List[Transaction]:
         date_format = '%Y/%m/%d'
 
         params = {
@@ -69,12 +98,17 @@ class InvestagramApi:
         }
 
         response = self._http_client.post(url, params=params)
-        ret = [StockBrokerResult(**data) for data in response.json()]
+        transactions = []
 
-        return ret
+        for raw_transaction in response.json():
+            raw_transaction['Date'] = datetime.fromisoformat(raw_transaction['Date']).date()
+            transaction = Transaction.create(**process_response(raw_transaction))
+            transactions.append(transaction)
+
+        return transactions
 
     def get_stock_transaction_by_stock_id_and_date(self, stock_id: int, from_date: date, to_date: date) -> List[
-                                                                                                    StockBrokerResult]:
+                                                                                                    Transaction]:
         return self._get_transactions(
             f'{BASE_HOST}{STOCK_TRANSACTION_BY_STOCK_ID}',
             {'stockId': stock_id},
@@ -83,7 +117,7 @@ class InvestagramApi:
         )
 
     def get_stock_transaction_by_broker_id_and_date(self, broker_id: int, from_date: date, to_date: date) -> List[
-                                                                                                    StockBrokerResult]:
+                                                                                                    Transaction]:
         return self._get_transactions(
             f'{BASE_HOST}{STOCK_TRANSACTION_BY_BROKER_ID}',
             {'brokerId': broker_id},

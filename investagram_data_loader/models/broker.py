@@ -12,3 +12,7 @@ class Broker:
     BrokerNumber: int
     BrokerStatusName: str
     BrokerClassificationName: str
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
