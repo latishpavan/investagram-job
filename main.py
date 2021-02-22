@@ -7,13 +7,13 @@ from investagram_data_loader.date.date_handler import generate_date_range
 from investagram_data_loader.repository.sqlite_dao import SqliteDao
 from investagram_data_loader.reader.data_reader import get_stocks
 
-SLEEP_TIME = 10000
-FROM_DATE, TO_DATE = date(2021, 2, 10), date(2021, 2, 20)
+SLEEP_TIME = 10
+FROM_DATE, TO_DATE = date(2021, 2, 15), date(2021, 2, 20)
 
 
 def load_transactions_by_stock(stock_code: str, mode: DateMode, from_date: date, to_date: date) -> list:
     transactions = []
-    logging.info(f'Loading transaction by stock code {stock_code} from {from_date} to {to_date} on a {mode} basis')
+    logging.info(f'Loading transaction by stock code {stock_code} from {from_date} to {to_date} on a {mode} basis...')
 
     with InvestagramApi() as api:
         stock = api.get_stock_info(stock_code)
@@ -26,6 +26,7 @@ def load_transactions_by_stock(stock_code: str, mode: DateMode, from_date: date,
 
 def load_transactions_by_broker(broker_code: str, mode: DateMode, from_date: date, to_date: date):
     transactions = []
+    logging.info(f'Loading transaction by broker code {broker_code} from {from_date} to {to_date} on a {mode} basis...')
 
     with InvestagramApi() as api:
         broker = api.get_broker_info(broker_code)
@@ -39,12 +40,14 @@ def load_transactions_by_broker(broker_code: str, mode: DateMode, from_date: dat
 
 def main():
     logging.info("Downloading data from investagram...")
-    stocks = get_stocks()
+    stocks = get_stocks(size=2)
 
     with SqliteDao() as dao:
         for stock in stocks:
             transactions = load_transactions_by_stock(stock, DateMode.DAILY, FROM_DATE, TO_DATE)
             dao.bulk_insert_transactions(transactions)
+
+            logging.info(f'Sleeping for {SLEEP_TIME} seconds...')
             time.sleep(SLEEP_TIME)
 
 

@@ -35,6 +35,9 @@ class Broker(Model):
 class Transaction(Model):
     stock_id = ForeignKeyField(Stock, db_column='stock_id')
     broker_id = ForeignKeyField(Broker, to_field='stock_broker_id', db_column='broker_id')
+    stock_code = CharField()
+    stock_name = CharField()
+    broker_code = CharField()
     date = DateField()
     buy_volume = IntegerField()
     buy_value = FloatField()
@@ -89,6 +92,8 @@ class SqliteDao(BaseDao):
     def bulk_insert_transactions(self, transactions: List[Transaction]):
         with self._database.atomic():
             Transaction.bulk_create(transactions, batch_size=50)
+
+        logging.info(f'Inserted {len(transactions)} transaction records in the database.')
 
     def __enter__(self):
         return self

@@ -51,7 +51,9 @@ class InvestagramApi:
         self._authenticate()
 
     def _authenticate(self):
-        response = self._http_client.post(f'{BASE_HOST}{AUTHENTICATION_ENDPOINT}', data=construct_login_body())
+        login_body = construct_login_body()
+        logging.info(f'Authenticating user...')
+        response = self._http_client.post(f'{BASE_HOST}{AUTHENTICATION_ENDPOINT}', data=login_body)
         self._http_client.cookies = response.cookies
 
     def __new__(cls, *args, **kwargs):
@@ -62,31 +64,32 @@ class InvestagramApi:
 
     @lru_cache(maxsize=200)
     @upsert_broker
-    def get_broker_info(self, broker_name: str) -> Broker:
+    def get_broker_info(self, broker_code: str) -> Broker:
         data = {
             "ExchangeType": 1,
             "IsAnalytics": False,
             "IsByBroker": True,
             "IsGetData": True,
-            "Keyword": broker_name.lower()
+            "Keyword": broker_code.lower()
         }
 
         response = self._http_client.post(f'{BASE_HOST}{BROKER_ID}', data=data)
+        logging.info(f'Received response from the api for the broker code {broker_code}: {response.json()}')
         broker_info = process_response(response.json()[0])
         return Broker.create(**broker_info)
 
     @lru_cache(maxsize=300)
     @upsert_stock
-    def get_stock_info(self, stock_name: str) -> Stock:
+    def get_stock_info(self, stock_code: str) -> Stock:
         params = {
             'limit': 0,
-            'keyword': stock_name.lower(),
+            'keyword': stock_code.lower(),
             'userDefaultExchangeType': 1,
             'selectedExchangeType': 1,
         }
 
         response = self._http_client.get(f'{BASE_HOST}{STOCK_ID}', params=params)
-        logging.info(f'Received response from the api: {response.json()}')
+        logging.info(f'Received response from the api for the stock code {stock_code}: {response.json()}')
         stock_info = process_response(response.json()[0])
         return Stock.create(**stock_info)
 
@@ -99,6 +102,7 @@ class InvestagramApi:
             **params,
         }
 
+        logging.info(f'Loading transactions with parameters: {params}...')
         response = self._http_client.post(url, params=params)
         transactions = []
 
@@ -107,6 +111,7 @@ class InvestagramApi:
             transaction = Transaction.create(**process_response(raw_transaction))
             transactions.append(transaction)
 
+        logging.info(f'Loaded {len(transactions)} transactions for {params}.')
         return transactions
 
     def get_stock_transaction_by_stock_id_and_date(self, stock_id: int, from_date: date, to_date: date) -> List[
