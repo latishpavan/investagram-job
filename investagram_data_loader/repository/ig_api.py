@@ -5,6 +5,7 @@ from dynaconf import settings
 from functools import lru_cache
 from stringcase import snakecase
 from datetime import datetime, date
+from investagram_data_loader.logger import logging
 from investagram_data_loader.constants.app import *
 from investagram_data_loader.constants.user import *
 from investagram_data_loader.constants.endpoints import *
@@ -85,6 +86,7 @@ class InvestagramApi:
         }
 
         response = self._http_client.get(f'{BASE_HOST}{STOCK_ID}', params=params)
+        logging.info(f'Received response from the api: {response.json()}')
         stock_info = process_response(response.json()[0])
         return Stock.create(**stock_info)
 
