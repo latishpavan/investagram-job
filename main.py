@@ -13,7 +13,7 @@ from investagram_data_loader.exceptions import NoDataFoundException
 
 # global settings here
 SLEEP_TIME = 10
-FROM_DATE, TO_DATE = date(2021, 2, 15), date(2021, 2, 20)
+FROM_DATE, TO_DATE = date(2020, 1, 1), date(2021, 2, 20)
 
 
 def load_transactions_by_stock(api: InvestagramApi, stock_code: str, mode: DateMode, from_date: date,
@@ -45,8 +45,8 @@ def load_transactions_by_broker(api: InvestagramApi, broker_code: str, mode: Dat
 
 def main():
     logging.info("Downloading data from investagram...")
-    # replace 'size=2' with 'size=-1' to download all the stocks data
-    stocks, unprocessed = get_stocks(size=1), []
+    # replace with 'size=-1' to download all the stocks data
+    stocks, unprocessed = get_stocks(size=-1), []
 
     with SqliteDao() as dao:
         with InvestagramApi() as api:
