@@ -99,6 +99,7 @@ class SqliteDao(BaseDao):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        logging.info("Closing the database handle...")
         self._database.close()
 
 

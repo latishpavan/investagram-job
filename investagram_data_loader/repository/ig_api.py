@@ -1,6 +1,7 @@
 import keyring
 import requests
 from typing import List
+from http import HTTPStatus
 from dynaconf import settings
 from functools import lru_cache
 from stringcase import snakecase
@@ -9,6 +10,7 @@ from investagram_data_loader.logger import logging
 from investagram_data_loader.constants.app import *
 from investagram_data_loader.constants.user import *
 from investagram_data_loader.constants.endpoints import *
+from investagram_data_loader.exceptions import NoDataFoundException
 from investagram_data_loader.repository.sqlite_dao import Stock, Broker, Transaction, upsert_stock, upsert_broker
 
 
@@ -47,10 +49,14 @@ class InvestagramApi:
         self._setup_client()
 
     def _setup_client(self):
-        self._http_client.headers.update({'Origin': ORIGIN, 'Referer': REFERER})
-        self._authenticate()
+        def response_hook(response, **kwargs):
+            response.raise_for_status()
 
-    def _authenticate(self):
+        self._http_client.headers.update({'Origin': ORIGIN, 'Referer': REFERER})
+        self._http_client.hooks['response'].append(response_hook)
+        self.authenticate()
+
+    def authenticate(self):
         login_body = construct_login_body()
         logging.info(f'Authenticating user...')
         response = self._http_client.post(f'{BASE_HOST}{AUTHENTICATION_ENDPOINT}', data=login_body)
@@ -74,8 +80,15 @@ class InvestagramApi:
         }
 
         response = self._http_client.post(f'{BASE_HOST}{BROKER_ID}', data=data)
-        logging.info(f'Received response from the api for the broker code {broker_code}: {response.json()}')
-        broker_info = process_response(response.json()[0])
+        response_json = response.json()
+
+        logging.info(f'Received response from the api with status {response.status_code} for the broker code '
+                     f'{broker_code}: {response_json}')
+
+        if len(response_json) == 0:
+            raise NoDataFoundException(f'No data found for broker code {broker_code}.')
+
+        broker_info = process_response(response_json[0])
         return Broker.create(**broker_info)
 
     @lru_cache(maxsize=300)
@@ -89,8 +102,15 @@ class InvestagramApi:
         }
 
         response = self._http_client.get(f'{BASE_HOST}{STOCK_ID}', params=params)
-        logging.info(f'Received response from the api for the stock code {stock_code}: {response.json()}')
-        stock_info = process_response(response.json()[0])
+        response_json = response.json()
+
+        logging.info(f'Received response from the api with status {response.status_code} '
+                     f'for the stock code {stock_code}: {response_json}')
+
+        if len(response_json) == 0:
+            raise NoDataFoundException(f'No data found for stock code {stock_code}.')
+
+        stock_info = process_response(response_json[0])
         return Stock.create(**stock_info)
 
     def _get_transactions(self, url: str, params: dict, from_date: date, to_date: date) -> List[Transaction]:
@@ -136,4 +156,5 @@ class InvestagramApi:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        logging.info("Closing the http connection...")
         self._http_client.close()
