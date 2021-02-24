@@ -2,6 +2,8 @@
 cookie.txt
 *.csv
 *.db
+*.ipynb
+test.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

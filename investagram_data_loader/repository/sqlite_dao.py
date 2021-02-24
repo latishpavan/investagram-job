@@ -1,5 +1,6 @@
 from peewee import *
 from typing import List
+from datetime import date
 from dynaconf import settings
 from investagram_data_loader.logger import logging
 from investagram_data_loader.repository.base_dao import BaseDao
@@ -38,7 +39,7 @@ class Transaction(Model):
     stock_code = CharField()
     stock_name = CharField()
     broker_code = CharField()
-    date = DateField()
+    date = DateField(index=True)
     buy_volume = IntegerField()
     buy_value = FloatField()
     buy_ave_price = FloatField()
@@ -91,9 +92,19 @@ class SqliteDao(BaseDao):
 
     def bulk_insert_transactions(self, transactions: List[Transaction]):
         with self._database.atomic():
-            Transaction.bulk_create(transactions, batch_size=50)
+            Transaction.bulk_create(transactions, batch_size=25)
 
         logging.info(f'Inserted {len(transactions)} transaction records in the database.')
+
+    def get_transactions_by_stock_code(self, stock_code: str, from_date: date, to_date: date):
+        filters = [
+            Transaction.stock_code == stock_code,
+            Transaction.date >= from_date,
+            Transaction.date <= to_date
+        ]
+
+        iterator = Transaction.select().where(*filters)
+        return iterator
 
     def __enter__(self):
         return self
